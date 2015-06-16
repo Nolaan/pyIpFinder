@@ -5,6 +5,28 @@ from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import QThread, pyqtSlot, SLOT
 from ui_pyipfinder import Ui_MainWindow
 
+import logging
+import optparse
+
+LOGGING_LEVELS = {'critical': logging.CRITICAL,
+                  'error': logging.ERROR,
+                  'warning': logging.WARNING,
+                  'info': logging.INFO,
+                  'debug': logging.DEBUG}
+
+# Default handler
+ch = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+
+# Logging facilities for debug
+parser = optparse.OptionParser()
+parser.add_option('-l', '--logging-level', help='Logging level')
+parser.add_option('-f', '--logging-file', help='Logging file name')
+(options, args) = parser.parse_args()
+logging_level = LOGGING_LEVELS.get(options.logging_level, logging.NOTSET)
+
+
 try:
     import nmap
 except ImportError:
@@ -68,11 +90,15 @@ class ThreadedScan(QThread):
         self.connect(self,QtCore.SIGNAL("updateGuiList"),parent.updateList)
         self.connect(self,QtCore.SIGNAL("messageToStatusbar(QString)"),parent.ui.statusbar, QtCore.SLOT("showMessage(QString)"))
         # print "Scan init done"
+        self.log = logging.getLogger("Scan Thread")
+        self.log.setLevel(logging_level)
+        self.log.addHandler(ch)
         
 
     def run(self):
         self.emit(QtCore.SIGNAL("messageToStatusbar(QString)"), "Scanning...")
         rpi_list = filter_results(scan_list(get_networks()))
+        self.log.debug("Received rpi_list : " + str(rpi_list))
         # rpi_list = filter_results(["10.42.0.167"])
         # Let's close the modal window
         if self.parent.Dialog != None:
@@ -171,26 +197,42 @@ class MyMainWindow(QtGui.QMainWindow):
 
 def scan_list(network):
     """ Scan a given network trunk """
+
+    scan_log = logging.getLogger("scan_list")
+    scan_log.setLevel(logging_level)
+    scan_log.addHandler(ch)
+
     nm = nmap.PortScanner()         # instantiate nmap.PortScanner object
     device_list = []
     for trunk in network:
+        scan_log.debug("Inspecting trunk : " + str(trunk))
         nm.scan(hosts=trunk, arguments='-sn')
         for device in nm.all_hosts():
+            scan_log.debug("Found device with ip addr : " + str(device))
             device_list.append(device.encode("ascii"))
     return device_list
 
 def filter_results(devicesList):
     """ Filters and grep results """
+
+    filter_log = logging.getLogger("filter_results")
+    filter_log.setLevel(logging_level)
+    filter_log.addHandler(ch)
+
     nm = nmap.PortScanner()
     rpi_list =[]
 
     for ip in devicesList:
         nm.scan(hosts=ip, arguments="-sn")
+        filter_log.debug("nm.all_hosts() gives : " + str(nm.all_hosts()))
         for device in nm.all_hosts():
+            filter_log.debug("Inspecting device : "+ str(device))
+            filter_log.debug("nm["+ device +"] : " + str(nm[device]))
             if 'mac' in nm[device]['addresses']:
                 vendorName = "".join(nm[device]['vendor'].values())
                 if re.match("Raspberry Pi",vendorName):
                     rpi_list.append([ip,nm[device]['addresses']['mac'].encode("ascii")])
+        filter_log.debug("Results rpi_list : " + str(rpi_list))
     return rpi_list
 
 
@@ -199,24 +241,46 @@ def get_networks():
     """ Scan cards and returns the networks reachable by the
     computer """
 
+    g_ntwlog = logging.getLogger("get_networks")
+    g_ntwlog.setLevel(logging_level)
+    g_ntwlog.addHandler(ch)
+
     iflist = netifaces.interfaces()
     # Remove localhost
     iflist = [ i for i in iflist if not ('lo' in i )]
+    g_ntwlog.debug("iflist contains : "+str(iflist))
     
     addresses_list = []
     for iface in iflist:
         ad = netifaces.ifaddresses(iface)
+        g_ntwlog.debug("ad contains : "+str(ad))
         if netifaces.AF_INET in ad.keys():
             addresses_list.append(ad[netifaces.AF_INET][0]['addr'])
     network_list = [re.sub(".\d{1,3}$",".0/24",fname) for fname in addresses_list]
 
+    g_ntwlog.debug("We return network_list with : "+str(network_list))
     return network_list
 
 if __name__ == '__main__':
 
+    mainlog = logging.getLogger("main")
+    mainlog.setLevel(logging_level)
+    mainlog.addHandler(ch)
+
+    # logging.basicConfig(level=logging_level, filename=options.logging_file,
+            # format='%(asctime)s %(levelname)s: %(message)s',
+            # datefmt='%Y-%m-%d %H:%M:%S')
+
     app = QtGui.QApplication(sys.argv)
+
+    # Adding app icon
+    app_icon = QtGui.QIcon()
+    app_icon.addFile('windowIcon.png', QtCore.QSize(64,64))
+    app.setWindowIcon(app_icon)
+
     myapp = MyMainWindow()
     myapp.show()
+    myapp.setWindowTitle("pyIpFinder")
 
     myapp.Dialog = QtGui.QDialog(myapp)
     myapp.Dialog.resize(300,230)
@@ -232,12 +296,10 @@ if __name__ == '__main__':
     myapp.Dialog.show()
 
     QtCore.QObject.connect(myapp.ui.actionRescan, QtCore.SIGNAL("activated()"), myapp.rescan)
-    # print "Launching threaded scan"
+    mainlog.debug("Launching threaded scan")
     myapp.scan = ThreadedScan(myapp)
     myapp.scan.start()
-    # print "Launched threaded scan"
-    # modal = ModalThread(myapp)
-    # modal.start()
+    mainlog.debug("Launched threaded scan")
 
     rpi_image = QtGui.QImage("./rpi.png")
     pixmap = QtGui.QPixmap.fromImage(rpi_image) 

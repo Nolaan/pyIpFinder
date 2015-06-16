@@ -50,8 +50,8 @@ class ThreadedScan(QThread):
 
     def run(self):
         print "Scan started!"
-        # rpi_list = filter_results(scan_list(get_networks()))
-        rpi_list = filter_results(["10.42.0.167"])
+        rpi_list = filter_results(scan_list(get_networks()))
+        # rpi_list = filter_results(["10.42.0.167"])
         # Let's close the modal window
         if self.parent.Dialog != None:
             self.parent.Dialog.deleteLater()

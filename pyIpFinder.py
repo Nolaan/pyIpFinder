@@ -12,6 +12,7 @@ except ImportError:
     p.wait()
     username = getpass.getuser()
     sys.path.insert(0,'/home/' + username + '/.local/lib/python2.7/site-packages')
+    sys.path.insert(1,'/root/.local/lib/python2.7/site-packages')
     try:
         import nmap
     except:

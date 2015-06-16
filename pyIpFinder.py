@@ -11,14 +11,34 @@ except ImportError:
     p = subprocess.Popen(['python','setup.py','install','--user'],cwd="python-nmap")
     p.wait()
     username = getpass.getuser()
-    sys.path.insert(0,'/home/' + username + '/.local/lib/python2.7/site-packages')
+    if username != 'root':
+        sys.path.insert(0,'/home/' + username + '/.local/lib/python2.7/site-packages')
     sys.path.insert(1,'/root/.local/lib/python2.7/site-packages')
     try:
         import nmap
     except:
-        print "Couldnt install nmap! Exiting\n"
+        print "Couldnt detect nmap! Relaunch please!\n"
         exit(1)
 
+try:
+    import netifaces
+except ImportError:
+    p = subprocess.Popen(['python','setup.py','install','--user'],cwd="netifaces")
+    p.wait()
+    username = getpass.getuser()
+    subprocess.call(["chmod", "755","-R", "/home/"+ username + "/.python-eggs"])
+    try:
+        import netifaces
+    except ImportError:
+        try:
+            username = getpass.getuser()
+            if username != 'root':
+                sys.path.insert(0,'/home/' + username + '/.local/lib/python2.7/site-packages')
+            sys.path.insert(1,'/root/.local/lib/python2.7/site-packages')
+            import netifaces
+        except:
+            print "Couldnt detect netifaces! Relaunch please!\n"
+            exit(1)
 
 
 class ModalThread(QThread):
@@ -178,14 +198,18 @@ def filter_results(devicesList):
 def get_networks():
     """ Scan cards and returns the networks reachable by the
     computer """
-    ifconfig = subprocess.check_output(["ifconfig"])
-    addresses_list = re.findall("inet \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}",ifconfig)
-    addresses_list = [re.sub("inet ","",fname ) for fname in addresses_list]
+
+    iflist = netifaces.interfaces()
+    # Remove localhost
+    iflist = [ i for i in iflist if not ('lo' in i )]
+    
+    addresses_list = []
+    for iface in iflist:
+        ad = netifaces.ifaddresses(iface)
+        if netifaces.AF_INET in ad.keys():
+            addresses_list.append(ad[netifaces.AF_INET][0]['addr'])
     network_list = [re.sub(".\d{1,3}$",".0/24",fname) for fname in addresses_list]
 
-    # Don't forget to remove localhost
-    network_list = [i for i in network_list if not ('127.0.0.' in i )]
-    
     return network_list
 
 if __name__ == '__main__':

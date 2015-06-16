@@ -1,2 +1,4 @@
 *.pyc
 *.swp
+/netifaces/build/
+/netifaces/dist/

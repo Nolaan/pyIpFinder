@@ -210,6 +210,7 @@ def scan_list(network):
         for device in nm.all_hosts():
             scan_log.debug("Found device with ip addr : " + str(device))
             device_list.append(device.encode("ascii"))
+    scan_log.debug("We return this device list : " + str(device_list))
     return device_list
 
 def filter_results(devicesList):
@@ -225,13 +226,13 @@ def filter_results(devicesList):
     for ip in devicesList:
         nm.scan(hosts=ip, arguments="-sn")
         filter_log.debug("nm.all_hosts() gives : " + str(nm.all_hosts()))
-        for device in nm.all_hosts():
-            filter_log.debug("Inspecting device : "+ str(device))
-            filter_log.debug("nm["+ device +"] : " + str(nm[device]))
-            if 'mac' in nm[device]['addresses']:
-                vendorName = "".join(nm[device]['vendor'].values())
-                if re.match("Raspberry Pi",vendorName):
-                    rpi_list.append([ip,nm[device]['addresses']['mac'].encode("ascii")])
+        # for device in nm.all_hosts():
+        filter_log.debug("Inspecting device : "+ str(ip))
+        filter_log.debug("nm["+ ip +"] : " + str(nm[ip]))
+        if 'mac' in nm[ip]['addresses']:
+            vendorName = "".join(nm[ip]['vendor'].values())
+            if re.match("Raspberry Pi",vendorName):
+                rpi_list.append([ip,nm[ip]['addresses']['mac'].encode("ascii")])
         filter_log.debug("Results rpi_list : " + str(rpi_list))
     return rpi_list
 

@@ -45,25 +45,28 @@ class ThreadedScan(QThread):
         QThread.__init__(self, parent)
         self.parent = parent
         self.connect(self,QtCore.SIGNAL("updateGuiList"),parent.updateList)
-        print "Scan init done"
+        self.connect(self,QtCore.SIGNAL("messageToStatusbar(QString)"),parent.ui.statusbar, QtCore.SLOT("showMessage(QString)"))
+        # print "Scan init done"
         
 
     def run(self):
-        print "Scan started!"
+        self.emit(QtCore.SIGNAL("messageToStatusbar(QString)"), "Scanning...")
         rpi_list = filter_results(scan_list(get_networks()))
         # rpi_list = filter_results(["10.42.0.167"])
         # Let's close the modal window
         if self.parent.Dialog != None:
             self.parent.Dialog.deleteLater()
             self.parent.Dialog = None
-        print "Scan ended!"
-        if len(rpi_list) > 0 :
-            print "This is the list of IP for Rpi : " + str(rpi_list)
-        else : 
-            print "The scan returned an empty list"
+        # print "Scan ended!"
+        # if len(rpi_list) > 0 :
+        #     print "This is the list of IP for Rpi : " + str(rpi_list)
+        # else : 
+        #     print "The scan returned an empty list"
         
+        self.emit(QtCore.SIGNAL("messageToStatusbar(QString)"), "Scanning done")
+        if len(rpi_list) == 0:
+            self.emit(QtCore.SIGNAL("messageToStatusbar(QString)"), "Scan returned empty list")
         self.emit(QtCore.SIGNAL("updateGuiList"),rpi_list)
-        print "Emitted"
 
 
 class NewPiBlock(QtGui.QWidget):
@@ -113,7 +116,7 @@ class MyMainWindow(QtGui.QMainWindow):
     def updateList(self,rpi_list):
         """ Update GUI with the list of found rpi (ipAddr, macAddr)"""
 
-        print "updating :D"
+        # print "updating :D"
         listLen = len(rpi_list) 
         if listLen == 1:
             self.ui.label_2.setText("IP Address : \n" + str(rpi_list[0][0]))
@@ -204,10 +207,10 @@ if __name__ == '__main__':
     myapp.Dialog.show()
 
     QtCore.QObject.connect(myapp.ui.actionRescan, QtCore.SIGNAL("activated()"), myapp.rescan)
-    print "Launching threaded scan"
+    # print "Launching threaded scan"
     myapp.scan = ThreadedScan(myapp)
     myapp.scan.start()
-    print "Launched threaded scan"
+    # print "Launched threaded scan"
     # modal = ModalThread(myapp)
     # modal.start()
 

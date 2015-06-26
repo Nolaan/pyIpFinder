@@ -2,12 +2,16 @@
 
 # Form implementation generated from reading ui file 'pyipfinder.ui'
 #
-# Created: Tue Jun 16 01:53:00 2015
+# Created: Fri Jun 26 12:11:08 2015
 #      by: PyQt4 UI code generator 4.11.3
 #
 # WARNING! All changes made in this file will be lost!
 
 from PyQt4 import QtCore, QtGui
+try:
+    from PyKDE4.kdeui import KApplication, KLed 
+except:
+    next
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
@@ -41,7 +45,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName(_fromUtf8("scrollArea"))
         self.scrollAreaWidgetContents = QtGui.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 344, 429))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 344, 229))
         self.scrollAreaWidgetContents.setObjectName(_fromUtf8("scrollAreaWidgetContents"))
         self.verticalLayout_4 = QtGui.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName(_fromUtf8("verticalLayout_4"))
@@ -65,6 +69,20 @@ class Ui_MainWindow(object):
         self.label = QtGui.QLabel(self.scrollAreaWidgetContents)
         self.label.setObjectName(_fromUtf8("label"))
         self.verticalLayout_3.addWidget(self.label)
+        self.horizontalLayout_2 = QtGui.QHBoxLayout()
+        self.horizontalLayout_2.setObjectName(_fromUtf8("horizontalLayout_2"))
+        self.pushButton = QtGui.QPushButton(self.scrollAreaWidgetContents)
+        self.pushButton.setObjectName(_fromUtf8("pushButton"))
+        self.horizontalLayout_2.addWidget(self.pushButton)
+        try:
+            self.kled = KLed(self.scrollAreaWidgetContents)
+            self.kled.setColor(QtGui.QColor(255, 0, 0))
+            self.kled.setObjectName(_fromUtf8("kled"))
+            self.kled.off()
+            self.horizontalLayout_2.addWidget(self.kled)
+        except:
+            next
+        self.verticalLayout_3.addLayout(self.horizontalLayout_2)
         self.horizontalLayout.addLayout(self.verticalLayout_3)
         self.verticalLayout.addLayout(self.horizontalLayout)
         self.line = QtGui.QFrame(self.scrollAreaWidgetContents)
@@ -103,6 +121,7 @@ class Ui_MainWindow(object):
         self.deviceNumbertext.setText(_translate("MainWindow", "Found 0 device", None))
         self.label_2.setText(_translate("MainWindow", "Ip adress : ", None))
         self.label.setText(_translate("MainWindow", "MAC Address :", None))
+        self.pushButton.setText(_translate("MainWindow", "PingButton", None))
         self.menuFile.setTitle(_translate("MainWindow", "File", None))
         self.actionRescan.setText(_translate("MainWindow", "Rescan", None))
         self.actionQuit.setText(_translate("MainWindow", "Quit", None))

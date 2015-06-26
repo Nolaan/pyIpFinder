@@ -4,6 +4,7 @@ import sys, getpass, os, subprocess, re
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import QThread, pyqtSlot, SLOT
 from ui_pyipfinder import Ui_MainWindow
+import time
 
 import logging
 import optparse
@@ -63,6 +64,21 @@ except ImportError:
             exit(1)
 
 
+class blinkingLed(QThread):
+    def __init__(self, ledNum, parent):
+        QThread.__init__(self)
+        self.ledNum = ledNum
+        self.connect(self,QtCore.SIGNAL("updateLed(int)"),parent.updateLed)
+        self.connect(self,QtCore.SIGNAL("offLed(int)"),parent.offLed)
+
+    def run(self):
+        for i in range(1,4):
+            self.emit(QtCore.SIGNAL("updateLed(int)"), self.ledNum)
+            time.sleep(0.3)
+            self.emit(QtCore.SIGNAL("offLed(int)"), self.ledNum)
+            time.sleep(0.15)
+
+
 class ModalThread(QThread):
     def __init__(self, parent=None):
         QThread.__init__(self, parent)
@@ -117,7 +133,7 @@ class ThreadedScan(QThread):
 
 
 class NewPiBlock(QtGui.QWidget):
-    def __init__(self, item, parent=None):
+    def __init__(self, item, itemNum, parent=None):
         QtGui.QWidget.__init__(self, parent)
 
         # Recuperer le scroll area
@@ -142,6 +158,22 @@ class NewPiBlock(QtGui.QWidget):
         self.label = QtGui.QLabel()
         self.label.setText("MAC Address : \n" + str(item[1]))
         self.verticalLayout_3.addWidget(self.label)
+
+        self.horizontalLayout_2 = QtGui.QHBoxLayout()
+        self.pushButton = QtGui.QPushButton(self.scrollAreaWidgetContents)
+        self.pushButton.mynum = itemNum
+        self.pushButton.myip = str(item[0])
+        self.pushButton.clicked.connect(parent.pingDevice0)
+        self.horizontalLayout_2.addWidget(self.pushButton)
+        try:
+            self.kled = KLed(self.scrollAreaWidgetContents)
+            self.kled.setColor(QtGui.QColor(255, 0, 0))
+            self.kled.off()
+            self.horizontalLayout_2.addWidget(self.kled)
+            parent.ui.kled.append(self.kled)
+        except:
+            next
+        self.verticalLayout_3.addLayout(self.horizontalLayout_2)
         self.horizontalLayout.addLayout(self.verticalLayout_3)
         self.verticalLayout.addLayout(self.horizontalLayout)
         self.line = QtGui.QFrame()
@@ -159,25 +191,45 @@ class MyMainWindow(QtGui.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
+        # Fixup putting kleds in array
+
+        self.ui.kledtmp = self.ui.kled
+        del self.ui.kled
+        self.ui.kled = []
+        self.ui.kled.append(self.ui.kledtmp)
+
+
+    @pyqtSlot(int)
+    def offLed(self,ledNumber):
+        self.ui.kled[ledNumber].off()
+
+    @pyqtSlot(int)
+    def updateLed(self,ledNum):
+        print "Numled = " + str(ledNum)
+        self.ui.kled[ledNum].toggle()
+
     @pyqtSlot(list)
     def updateList(self,rpi_list):
         """ Update GUI with the list of found rpi (ipAddr, macAddr)"""
 
         # print "updating :D"
-        listLen = len(rpi_list) 
-        if listLen == 1:
+        self.listLen = len(rpi_list) 
+        if self.listLen == 1:
             self.ui.label_2.setText("IP Address : \n" + str(rpi_list[0][0]))
+            self.ui.label_2.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
             self.ui.label.setText("MAC Address : \n" + str(rpi_list[0][1]))
+            self.ui.label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+            self.ui.pushButton.myip = str(rpi_list[0][0])
             self.ui.deviceNumbertext.setText("Found 1 device")
 
             
-        elif listLen > 1 :
+        elif self.listLen > 1 :
             self.ui.label_2.setText(str(rpi_list[0][0]))
             self.ui.label.setText(str(rpi_list[0][1]))
-            self.ui.deviceNumbertext.setText("Found "+ str(listLen) + " device")
+            self.ui.deviceNumbertext.setText("Found "+ str(self.listLen) + " device")
             # Adding new blocks
-            for i in range (1,listLen):
-                self.ui.formLayout.addRow(NewPiBlock(rpi_list[i],parent=self))
+            for i in range (1,self.listLen):
+                self.ui.formLayout.addRow(NewPiBlock(rpi_list[i],i,parent=self))
 
         else:
             self.ui.label_2.setText("NO DEVICE FOUND")
@@ -193,6 +245,29 @@ class MyMainWindow(QtGui.QMainWindow):
             self.scan = ThreadedScan(self)
             self.scan.start()
 
+    def pingDevice0(self):
+        self.pingDevice(int(self.sender().mynum),self.sender().myip)
+
+    @pyqtSlot(int,str)
+    def pingDevice(self,ledNum,ip):
+        """ Blink the led to indicate ping"""
+        if self.listLen > 0:
+            print "Laundched ping"
+            ans = os.system("ping -c 1 -w 2 " + ip + " 2>&1 > /dev/null")
+            if ans == 0 :
+                # Set led green and blink only if online
+                print "Number = " + str(ledNum)
+                print "List len : " + str(self.listLen)
+                self.ui.kled[ledNum].setColor(QtGui.QColor("green"))
+                self.blinking = blinkingLed(ledNum, self)
+                self.blinking.start()
+            else:
+                # Set led red
+                self.ui.kled[ledNum].setColor(QtGui.QColor("red"))
+
+    @pyqtSlot(int)
+    def setLedState(self,state):
+        1
 
 
 def scan_list(network):
@@ -279,6 +354,7 @@ if __name__ == '__main__':
     app_icon.addFile('windowIcon.png', QtCore.QSize(64,64))
     app.setWindowIcon(app_icon)
 
+    # Setting up Main Window
     myapp = MyMainWindow()
     myapp.show()
     myapp.setWindowTitle("pyIpFinder")
@@ -296,8 +372,18 @@ if __name__ == '__main__':
     myapp.Dialog.setModal(True)
     myapp.Dialog.show()
 
+
+    # Connect Action
     QtCore.QObject.connect(myapp.ui.actionRescan, QtCore.SIGNAL("activated()"), myapp.rescan)
+
+    myapp.listLen = 0
+    myapp.ui.pushButton.mynum = 0
+    myapp.ui.pushButton.myip = ''
+    myapp.ui.pushButton.clicked.connect(myapp.pingDevice0)
+
+    
     mainlog.debug("Launching threaded scan")
+
     myapp.scan = ThreadedScan(myapp)
     myapp.scan.start()
     mainlog.debug("Launched threaded scan")

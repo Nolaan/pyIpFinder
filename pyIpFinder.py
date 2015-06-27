@@ -5,6 +5,10 @@ from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import QThread, pyqtSlot, SLOT
 from ui_pyipfinder import Ui_MainWindow
 import time
+try:
+    from PyKDE4.kdeui import KApplication, KLed 
+except:
+    next
 
 import logging
 import optparse
@@ -154,24 +158,28 @@ class NewPiBlock(QtGui.QWidget):
         self.verticalLayout_3 = QtGui.QVBoxLayout()
         self.label_2 = QtGui.QLabel()
         self.label_2.setText("IP Address : \n" + str(item[0]))
+        self.label_2.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self.verticalLayout_3.addWidget(self.label_2)
         self.label = QtGui.QLabel()
         self.label.setText("MAC Address : \n" + str(item[1]))
+        self.label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
         self.verticalLayout_3.addWidget(self.label)
 
         self.horizontalLayout_2 = QtGui.QHBoxLayout()
-        self.pushButton = QtGui.QPushButton(self.scrollAreaWidgetContents)
+        self.pushButton = QtGui.QPushButton(self.scrollArea)
         self.pushButton.mynum = itemNum
         self.pushButton.myip = str(item[0])
         self.pushButton.clicked.connect(parent.pingDevice0)
+        self.pushButton.setText("PingButton")
         self.horizontalLayout_2.addWidget(self.pushButton)
         try:
-            self.kled = KLed(self.scrollAreaWidgetContents)
+            self.kled = KLed(self.scrollArea)
             self.kled.setColor(QtGui.QColor(255, 0, 0))
             self.kled.off()
             self.horizontalLayout_2.addWidget(self.kled)
             parent.ui.kled.append(self.kled)
         except:
+            print "Error adding new piblock"
             next
         self.verticalLayout_3.addLayout(self.horizontalLayout_2)
         self.horizontalLayout.addLayout(self.verticalLayout_3)
@@ -224,9 +232,13 @@ class MyMainWindow(QtGui.QMainWindow):
 
             
         elif self.listLen > 1 :
-            self.ui.label_2.setText(str(rpi_list[0][0]))
-            self.ui.label.setText(str(rpi_list[0][1]))
+            self.ui.label_2.setText("IP Address : \n" + str(rpi_list[0][0]))
+            self.ui.label_2.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+            self.ui.label.setText("MAC Address : \n" + str(rpi_list[0][1]))
+            self.ui.label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
             self.ui.deviceNumbertext.setText("Found "+ str(self.listLen) + " device")
+            self.ui.pushButton.myip = str(rpi_list[0][0])
+
             # Adding new blocks
             for i in range (1,self.listLen):
                 self.ui.formLayout.addRow(NewPiBlock(rpi_list[i],i,parent=self))
@@ -271,7 +283,8 @@ class MyMainWindow(QtGui.QMainWindow):
 
 
 def scan_list(network):
-    """ Scan a given network trunk """
+    """ Scan a given network trunk 
+        and returns the devices that are up"""
 
     scan_log = logging.getLogger("scan_list")
     scan_log.setLevel(logging_level)
@@ -283,8 +296,9 @@ def scan_list(network):
         scan_log.debug("Inspecting trunk : " + str(trunk))
         nm.scan(hosts=trunk, arguments='-sn')
         for device in nm.all_hosts():
-            scan_log.debug("Found device with ip addr : " + str(device))
-            device_list.append(device.encode("ascii"))
+            if nm[device]['status']['state'] == 'up':
+                scan_log.debug("Found device with ip addr : " + str(device))
+                device_list.append(nm[device])
     scan_log.debug("We return this device list : " + str(device_list))
     return device_list
 
@@ -295,19 +309,19 @@ def filter_results(devicesList):
     filter_log.setLevel(logging_level)
     filter_log.addHandler(ch)
 
-    nm = nmap.PortScanner()
+    # nm = nmap.PortScanner()
     rpi_list =[]
 
-    for ip in devicesList:
-        nm.scan(hosts=ip, arguments="-sn")
-        filter_log.debug("nm.all_hosts() gives : " + str(nm.all_hosts()))
+    for num in range(0,len(devicesList)):
+        # nm.scan(hosts=ip, arguments="-sn")
+        # filter_log.debug("nm.all_hosts() gives : " + str(nm.all_hosts()))
         # for device in nm.all_hosts():
-        filter_log.debug("Inspecting device : "+ str(ip))
-        filter_log.debug("nm["+ ip +"] : " + str(nm[ip]))
-        if 'mac' in nm[ip]['addresses']:
-            vendorName = "".join(nm[ip]['vendor'].values())
+        # filter_log.debug("Inspecting device : "+ str(ip))
+        # filter_log.debug("nm["+ ip +"] : " + str(nm[ip]))
+        if 'mac' in devicesList[num]['addresses']:
+            vendorName = "".join(devicesList[num]['vendor'].values())
             if re.match("Raspberry Pi",vendorName):
-                rpi_list.append([ip,nm[ip]['addresses']['mac'].encode("ascii")])
+                rpi_list.append([devicesList[num]['addresses']['ipv4'].encode("ascii"),devicesList[num]['addresses']['mac'].encode("ascii")])
         filter_log.debug("Results rpi_list : " + str(rpi_list))
     return rpi_list
 

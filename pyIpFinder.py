@@ -256,7 +256,7 @@ class MyMainWindow(QtGui.QMainWindow):
             self.ui.label_2.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
             self.ui.label.setText("MAC Address : \n" + str(rpi_list[0][1]))
             self.ui.label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
-            self.ui.deviceNumbertext.setText("Found "+ str(self.listLen) + " device")
+            self.ui.deviceNumbertext.setText("Found "+ str(self.listLen) + " devices")
             self.ui.pushButton.myip = str(rpi_list[0][0])
 
             # Adding new blocks

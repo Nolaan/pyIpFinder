@@ -8,10 +8,28 @@
 # WARNING! All changes made in this file will be lost!
 
 from PyQt4 import QtCore, QtGui
+import subprocess,getpass
+
 try:
-    from PyKDE4.kdeui import KApplication, KLed 
-except:
-    next
+    from QLed import QLed
+except ImportError:
+    p = subprocess.Popen(['python','setup.py','install','--user'],cwd="QLed")
+    p.wait()
+    username = getpass.getuser()
+    subprocess.call(["chmod", "755","-R", "/home/"+ username + "/.python-eggs"])
+    try:
+        import QLed
+    except ImportError:
+        try:
+            username = getpass.getuser()
+            if username != 'root':
+                sys.path.insert(0,'/home/' + username + '/.local/lib/python2.7/site-packages')
+            sys.path.insert(1,'/root/.local/lib/python2.7/site-packages')
+            import QLed
+        except:
+            print "Couldnt detect QLed! Relaunch please!\n"
+            exit(1)
+
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
@@ -31,9 +49,9 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
         MainWindow.resize(370, 284)
-        MainWindow.setMaximumSize(QtCore.QSize(370, 16777215))
+        MainWindow.setMaximumSize(QtCore.QSize(420, 16777215))
         self.centralwidget = QtGui.QWidget(MainWindow)
-        self.centralwidget.setMaximumSize(QtCore.QSize(360, 16777215))
+        self.centralwidget.setMaximumSize(QtCore.QSize(380, 16777215))
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
         self.verticalLayout_2 = QtGui.QVBoxLayout(self.centralwidget)
         self.verticalLayout_2.setObjectName(_fromUtf8("verticalLayout_2"))
@@ -74,14 +92,10 @@ class Ui_MainWindow(object):
         self.pushButton = QtGui.QPushButton(self.scrollAreaWidgetContents)
         self.pushButton.setObjectName(_fromUtf8("pushButton"))
         self.horizontalLayout_2.addWidget(self.pushButton)
-        try:
-            self.kled = KLed(self.scrollAreaWidgetContents)
-            self.kled.setColor(QtGui.QColor(255, 0, 0))
-            self.kled.setObjectName(_fromUtf8("kled"))
-            self.kled.off()
-            self.horizontalLayout_2.addWidget(self.kled)
-        except:
-            next
+
+        self.kled = QLed(self.scrollAreaWidgetContents,onColour=QLed.Red,shape=QLed.Circle)
+
+        self.horizontalLayout_2.addWidget(self.kled)
         self.verticalLayout_3.addLayout(self.horizontalLayout_2)
         self.horizontalLayout.addLayout(self.verticalLayout_3)
         self.verticalLayout.addLayout(self.horizontalLayout)

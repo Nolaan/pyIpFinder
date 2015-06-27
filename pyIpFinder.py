@@ -66,6 +66,25 @@ except ImportError:
         except:
             print "Couldnt detect netifaces! Relaunch please!\n"
             exit(1)
+try:
+    from QLed import QLed
+except ImportError:
+    p = subprocess.Popen(['python','setup.py','install','--user'],cwd="QLed")
+    p.wait()
+    username = getpass.getuser()
+    subprocess.call(["chmod", "755","-R", "/home/"+ username + "/.python-eggs"])
+    try:
+        import QLed
+    except ImportError:
+        try:
+            username = getpass.getuser()
+            if username != 'root':
+                sys.path.insert(0,'/home/' + username + '/.local/lib/python2.7/site-packages')
+            sys.path.insert(1,'/root/.local/lib/python2.7/site-packages')
+            import QLed
+        except:
+            print "Couldnt detect QLed! Relaunch please!\n"
+            exit(1)
 
 
 class blinkingLed(QThread):
@@ -173,9 +192,10 @@ class NewPiBlock(QtGui.QWidget):
         self.pushButton.setText("PingButton")
         self.horizontalLayout_2.addWidget(self.pushButton)
         try:
-            self.kled = KLed(self.scrollArea)
-            self.kled.setColor(QtGui.QColor(255, 0, 0))
-            self.kled.off()
+            # self.kled = KLed(self.scrollArea)
+            self.kled = QLed(self.scrollArea,onColour=QLed.Red,shape=QLed.Circle)
+            # self.kled.setColor(QtGui.QColor(255, 0, 0))
+            # self.kled.off()
             self.horizontalLayout_2.addWidget(self.kled)
             parent.ui.kled.append(self.kled)
         except:
@@ -209,12 +229,12 @@ class MyMainWindow(QtGui.QMainWindow):
 
     @pyqtSlot(int)
     def offLed(self,ledNumber):
-        self.ui.kled[ledNumber].off()
+        self.ui.kled[ledNumber].setValue(QLed.Grey)
 
     @pyqtSlot(int)
     def updateLed(self,ledNum):
         print "Numled = " + str(ledNum)
-        self.ui.kled[ledNum].toggle()
+        self.ui.kled[ledNum].toggleValue()
 
     @pyqtSlot(list)
     def updateList(self,rpi_list):
@@ -270,12 +290,13 @@ class MyMainWindow(QtGui.QMainWindow):
                 # Set led green and blink only if online
                 print "Number = " + str(ledNum)
                 print "List len : " + str(self.listLen)
-                self.ui.kled[ledNum].setColor(QtGui.QColor("green"))
+                # self.ui.kled[ledNum].setColor(QtGui.QColor("green"))
+                self.ui.kled[ledNum].setOnColour(QLed.Green)
                 self.blinking = blinkingLed(ledNum, self)
                 self.blinking.start()
             else:
                 # Set led red
-                self.ui.kled[ledNum].setColor(QtGui.QColor("red"))
+                self.ui.kled[ledNum].setOnColour(QLed.Red)
 
     @pyqtSlot(int)
     def setLedState(self,state):
